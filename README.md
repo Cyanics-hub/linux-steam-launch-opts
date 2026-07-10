@@ -158,9 +158,6 @@ You can execute local scripts or commands before the game launches.
 if [[ -x "./clear-cache.sh" ]]; then
     ./clear-cache.sh
 fi
-
-export PROTON_USE_NTSYNC=1
-
 ```
 
 ## Debugging
