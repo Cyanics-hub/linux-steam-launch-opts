@@ -1,11 +1,16 @@
 ```markdown
 # linux-steam-launch-opts
 
-A Linux-only dispatcher for Steam launch options. Offload complex command strings into modular, per-game bash configuration files. Manage environment variables, command wrappers, and conditional logic for native, Proton, and non-Steam titles. Keep your game launch configurations clean, modular, and maintainable.
+A Linux-only dispatcher for Steam launch options. Offload complex command 
+strings into modular, per-game bash configuration files. Manage environment 
+variables, command wrappers, and conditional logic for native, Proton, and 
+non-Steam titles. Keep your game launch configurations clean, modular, and 
+maintainable.
 
 ## Installation
 
-1. **Download**: Place the script in a directory in your `$PATH` (e.g., `~/.local/bin/`).
+1. **Download**: Place the script in a directory in your `$PATH` 
+   (e.g., `~/.local/bin/`).
 2. **Permissions**:
    ```bash
    chmod +x ~/.local/bin/linux-steam-launch-opts
@@ -26,10 +31,14 @@ linux-steam-launch-opts %command%
 
 ## Architecture
 
-Configurations are stored in `~/.config/steam-launch/`. The script automatically generates a commented stub file the first time a game is launched.
+Configurations are stored in `~/.config/steam-launch/`. The script
+automatically generates a commented stub file the first time a game
+is launched.
 
-* `global.conf`: Sourced before every game. Ideal for environment variables or dynamic logic that applies to your entire library.
-* `<appid>-<executable>.conf`: Per-game overrides. Sourced after `global.conf`.
+* `global.conf`: Sourced before every game. Ideal for environment
+variables or dynamic logic that applies to your entire library.
+* `<appid>-<executable>.conf`: Per-game overrides. Sourced after
+`global.conf`.
 
 ## Syntax Reference
 
@@ -37,8 +46,8 @@ Configurations are standard bash scripts. You can use any valid bash logic.
 
 | Variable | Description |
 | --- | --- |
-| `PRE` | Array. Commands/wrappers prepended to the executable (e.g., `gamemoderun`, `mangohud`). |
-| `ARGS` | Array. Arguments appended to the executable (e.g., `-novid`, `-console`). |
+| `PRE` | Array. Commands/wrappers prepended to the executable |
+| `ARGS` | Array. Arguments appended to the executable |
 
 ### Basic Usage Example
 
@@ -58,7 +67,8 @@ ARGS=(-novid -console)
 
 ### Dynamic Display Topology
 
-You can run conditional logic (like checking monitor settings via `kscreen-doctor`) inside `global.conf`.
+You can run conditional logic (like checking monitor settings via
+`kscreen-doctor`) inside `global.conf`.
 
 ```bash
 # ~/.config/steam-launch/global.conf
@@ -90,14 +100,15 @@ export PROTON_USE_NTSYNC=1
 
 ## Debugging
 
-If a game fails to launch or behaves unexpectedly, check the log file:
+If a game fails to launch, check the log file:
 
 ```bash
 cat ~/.config/steam-launch/last-launch.log
 
 ```
 
-This file records the resolved `appid`, the configuration file sourced, and the exact final execution command string.
+This file records the resolved `appid`, the configuration file sourced,
+and the exact final execution command string.
 
 ## License
 
