@@ -13,25 +13,64 @@ maintainable.
    (e.g., `~/.local/bin/`).
 2. **Permissions**:
    ```bash
-   chmod +x ~/.local/bin/linux-steam-launch-opts
+   chmod +x steam-launch-opts
 
 ```
 
-3. **Steam Integration**:
+3. **Symlink (Optional, for shorter commands)**:
+```bash
+ln -s "$(pwd)/steam-launch-opts" ~/.local/bin/slopts
+
+```
+
+
+4. **Steam Integration**:
 * Right-click any game in your Steam Library → **Properties**.
 * In **Launch Options**, enter:
 ```bash
-linux-steam-launch-opts %command%
-
+steam-launch-opts %command%
+or
+slopts %command%
 ```
 
 
 
 
 
+## How to Migrate Your Launch Options
+
+If you have existing Steam launch options, they likely look like a long
+string of text. This tool replaces that messy string with a clean,
+organized file.
+
+### Understanding the Mapping
+
+Steam launch options usually follow this pattern:
+`[Wrappers] %command% [Arguments]`
+
+* **Wrappers (PRE)**: Tools that run *before* the game, such as
+`gamemoderun` or `mangohud`.
+* **Arguments (ARGS)**: Settings passed *to* the game, such as `-novid`,
+`-windowed`, or `-vulkan`.
+
+**Example:**
+If your current Steam launch string is:
+`gamemoderun mangohud %command% -vulkan -novid`
+
+**You would map it to your configuration file like this:**
+
+```bash
+# Anything before %command% goes in PRE
+PRE=(gamemoderun mangohud)
+
+# Anything after %command% goes in ARGS
+ARGS=(-vulkan -novid)
+
+```
+
 ## Architecture
 
-Configurations are stored in `~/.config/steam-launch/`. The script
+Configurations are stored in `~/.config/steam-launch-opts/`. The script
 automatically generates a commented stub file the first time a game
 is launched.
 
@@ -51,7 +90,7 @@ Configurations are standard bash scripts. You can use any valid bash logic.
 
 ### Basic Usage Example
 
-`~/.config/steam-launch/12345-GameName.conf`:
+`~/.config/steam-launch-opts/12345-GameName.conf`:
 
 ```bash
 # Export variables
@@ -71,7 +110,7 @@ You can run conditional logic (like checking monitor settings via
 `kscreen-doctor`) inside `global.conf`.
 
 ```bash
-# ~/.config/steam-launch/global.conf
+# ~/.config/steam-launch-opts/global.conf
 
 # Example: Dynamic frame rate tuning based on display output
 if kscreen-doctor -o 2>/dev/null | grep -q "Vrr: Always"; then
@@ -87,7 +126,7 @@ fi
 You can execute local scripts or commands before the game launches.
 
 ```bash
-# ~/.config/steam-launch/99999-MMO.conf
+# ~/.config/steam-launch-opts/99999-MMO.conf
 
 # Cache clearing script
 if [[ -x "./clear-cache.sh" ]]; then
@@ -103,7 +142,7 @@ export PROTON_USE_NTSYNC=1
 If a game fails to launch, check the log file:
 
 ```bash
-cat ~/.config/steam-launch/last-launch.log
+cat ~/.config/steam-launch-opts/last-launch.log
 
 ```
 
