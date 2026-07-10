@@ -1,4 +1,4 @@
-```markdown
+
 # linux-steam-launch-opts
 
 A Linux-only dispatcher for Steam launch options. Offload complex command 
@@ -14,25 +14,44 @@ maintainable.
 2. **Permissions**:
    ```bash
    chmod +x steam-launch-opts
+   ```
 
-```
 
 3. **Symlink (Optional, for shorter commands)**:
-```bash
-ln -s "$(pwd)/steam-launch-opts" ~/.local/bin/slopts
-
-```
+   ```bash
+   ln -s "$(pwd)/steam-launch-opts" ~/.local/bin/slopts   
+   ```
 
 
 4. **Steam Integration**:
-* Right-click any game in your Steam Library → **Properties**.
-* In **Launch Options**, enter:
-```bash
-steam-launch-opts %command%
-or
-slopts %command%
-```
 
+   Right-click any game in your Steam Library → **Properties**.
+   
+   In **Launch Options**, enter:
+      ```bash
+      steam-launch-opts %command%
+      ```
+   or (with symlink)
+      ```bash
+      slopts %command%
+      ```
+
+
+
+## First-Time Setup & Initialization
+
+This script creates its own environment upon your first launch:
+
+1. **Launch the game** once using the Launch Option string specified above.
+2. The script will automatically create the configuration directory at
+`~/.config/steam-launch-opts/` and generate the following:
+* `global.conf`: Created automatically if it does not exist.
+* `<appid>-<executable>.conf`: A stub file generated specifically for
+this game.
+
+
+3. **Configure**: Once the files exist, edit them in your preferred
+text editor. The changes apply on the *next* launch.
 
 
 
@@ -43,11 +62,13 @@ If you have existing Steam launch options, they likely look like a long
 string of text. This tool replaces that messy string with a clean,
 organized file.
 
+
 ### Understanding the Mapping
 
 Steam launch options usually follow this pattern:
-`[Wrappers] %command% [Arguments]`
+`[Variables] [Wrappers] %command% [Arguments]`
 
+* **Variables**: Environment variables that define behavior (e.g., `PROTON_ENABLE_NVAPI=1`).
 * **Wrappers (PRE)**: Tools that run *before* the game, such as
 `gamemoderun` or `mangohud`.
 * **Arguments (ARGS)**: Settings passed *to* the game, such as `-novid`,
@@ -55,11 +76,17 @@ Steam launch options usually follow this pattern:
 
 **Example:**
 If your current Steam launch string is:
-`gamemoderun mangohud %command% -vulkan -novid`
+`PROTON_ENABLE_NVAPI=1 gamemoderun mangohud %command% -vulkan -novid`
 
 **You would map it to your configuration file like this:**
 
 ```bash
+# AppId: 00000000
+# Executable: /mnt/games/Games/GameFolder/GameName.exe
+
+# Environment variables
+export PROTON_ENABLE_NVAPI=1
+
 # Anything before %command% goes in PRE
 PRE=(gamemoderun mangohud)
 
@@ -75,7 +102,7 @@ automatically generates a commented stub file the first time a game
 is launched.
 
 * `global.conf`: Sourced before every game. Ideal for environment
-variables or dynamic logic that applies to your entire library.
+variables or dynamic logic that applies to your entire game library.
 * `<appid>-<executable>.conf`: Per-game overrides. Sourced after
 `global.conf`.
 
@@ -104,19 +131,18 @@ ARGS=(-novid -console)
 
 ## Advanced Examples
 
-### Dynamic Display Topology
+### Dynamic Display Variables
 
-You can run conditional logic (like checking monitor settings via
-`kscreen-doctor`) inside `global.conf`.
+You can incorporate conditional logic (such as checking monitor configuration via `kscreen-doctor`) directly within `global.conf` or any game-specific `<appid>-<executable>.conf` file. The following example demonstrates how to dynamically adjust frame rate and VSync settings based on your active display topology.
 
 ```bash
 # ~/.config/steam-launch-opts/global.conf
 
 # Example: Dynamic frame rate tuning based on display output
 if kscreen-doctor -o 2>/dev/null | grep -q "Vrr: Always"; then
-    export DXVK_FRAME_RATE=224
+    export MANGOHUD_CONFIG="vsync=1,fps_limit=224"
 else
-    export MANGOHUD_CONFIG="vsync=1,fps_limit=120"
+    export MANGOHUD_CONFIG="vsync=3,fps_limit=120,fps_limit_method=early"
 fi
 
 ```
