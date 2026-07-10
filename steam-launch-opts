@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# steam-launch-opts — Generic Steam launch-options dispatcher.
+# Intercepts Steam %command% execution to source external bash configurations.
+
+CONF_DIR="${STEAM_LAUNCH_CONF_DIR:-$HOME/.config/steam-launch-opts}"
+
+# Escape hatch to bypass the dispatcher entirely.
+if [[ -n "${STEAM_LAUNCH_DISABLE:-}" ]]; then
+    exec "$@"
+fi
+
+mkdir -p "$CONF_DIR"
+
+# Centralized stub generation function for global and per-game templates.
+generate_stub() {
+    local target_file="$1"
+    local header_info="$2"
+    if [[ ! -e "$target_file" ]]; then
+        cat > "$target_file" <<EOF
+# $header_info
+#
+# Plain bash. Examples:
+# export DXVK_HUD=compact
+# export PROTON_ENABLE_WAYLAND=1
+# PRE=(gamemoderun mangohud)
+# ARGS=(-novid)
+EOF
+    fi
+}
+
+# 1. Primary AppId Resolution
+# Populated natively by Steam for Proton (STEAM_COMPAT_APP_ID) and native Linux binaries (SteamAppId/SteamGameId).
+appid="${STEAM_COMPAT_APP_ID:-${SteamAppId:-${SteamGameId:-}}}"
+
+# 2. Secondary AppId Resolution: Non-Steam Proton Shortcuts
+# Steam executes these via reaper without exporting AppId to the environment.
+# Requires parsing the execution array to extract the inline argument.
+if [[ -z "$appid" || "$appid" == "0" ]]; then
+    for arg in "$@"; do
+        if [[ "$arg" == AppId=* ]]; then
+            extracted_appid="${arg#AppId=}"
+            if [[ "$extracted_appid" != "0" ]]; then
+                appid="$extracted_appid"
+                break
+            fi
+        fi
+    done
+fi
+
+# 3. Tertiary AppId Resolution: Native Non-Steam Shortcuts
+# Generates a deterministic hash from the absolute path of the target executable.
+# Ignores known Steam compatibility tools in the argument chain to isolate the actual binary.
+if [[ -z "$appid" || "$appid" == "0" ]]; then
+    target_exe="${1:-unknown}"
+    for arg in "$@"; do
+        if [[ "$arg" == /* ]] && [[ ! "$arg" =~ steam-launch-wrapper|reaper|SteamLinuxRuntime|proton|_v2-entry-point ]]; then
+            target_exe="$arg"
+            break
+        fi
+    done
+    exe_name=$(basename "$target_exe" | sed 's/[^a-zA-Z0-9.-]/_/g')
+    exe_hash=$(echo -n "$(readlink -m "$target_exe")" | md5sum | cut -c1-8)
+    appid="nonsteam-${exe_name}-${exe_hash}"
+fi
+
+PRE=()
+ARGS=()
+
+# Evaluate Global Configuration
+# Sourced first to establish baseline environment variables and wrappers for all processes.
+global_conf="$CONF_DIR/global.conf"
+generate_stub "$global_conf" "global.conf — sourced before per-game configs. Applies to ALL games."
+[[ -r "$global_conf" ]] && . "$global_conf"
+
+# Evaluate Per-Game Configuration
+# Iterates through matching configurations, allowing inherited global states to be selectively overridden.
+found_conf=""
+for f in "$CONF_DIR/$appid.conf" "$CONF_DIR/$appid-"*.conf; do
+    [[ -r "$f" ]] || continue
+    . "$f"
+    found_conf="$f"
+done
+
+# Initial Execution Configuration Generation
+# Triggers only when no existing configuration file matches the resolved AppId.
+if [[ -z "$found_conf" ]]; then
+    game_dir="$(basename "${PWD:-unknown}")"
+
+    # Heuristic parsing to extract the target binary name for human-readable file tagging.
+    found_exe="unknown"
+    for arg in "$@"; do
+        if [[ "$arg" == /* ]] && [[ ! "$arg" =~ steam-launch-wrapper|reaper|SteamLinuxRuntime|proton|_v2-entry-point ]]; then
+            found_exe="$arg"
+        fi
+    done
+
+    exe_name="$(basename "$found_exe")"
+
+    if [[ "$exe_name" != "unknown" ]]; then
+        human_tag="$exe_name"
+    else
+        human_tag="$game_dir"
+    fi
+
+    safe_tag="$(echo "$human_tag" | sed 's/[^a-zA-Z0-9.-]/_/g')"
+    stub="$CONF_DIR/${appid}-${safe_tag}.conf"
+
+    generate_stub "$stub" "AppId: $appid | Executable: $found_exe | Working Dir: $PWD"
+fi
+
+# Execution Logging
+# Writes the resolved AppId, source config, and final command string array for debugging.
+{
+    echo "$(date '+%F %T') appid=$appid conf=${found_conf:-none (stub created)}"
+    printf 'cmd:'
+    printf ' %q' "${PRE[@]}" "$@" "${ARGS[@]}"
+    printf '\n'
+} > "$CONF_DIR/last-launch.log" 2>/dev/null
+
+# Final Process Execution
+# Replaces the bash shell with the target binary, retaining identical PID.
+exec "${PRE[@]}" "$@" "${ARGS[@]}"
