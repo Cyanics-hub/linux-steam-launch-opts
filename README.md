@@ -153,6 +153,9 @@ and the exact final execution command string.
 
 Licensed under the **GPLv3**. See `LICENSE` for details.
 
-```
+## Acknowledgements
 
-```
+The structure, documentation, and logic for this project were developed
+with the extensive assistance of large language models. This
+project has been manually curated, tested, and maintained to ensure
+functionality and reliability.
